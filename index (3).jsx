@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { IconHome, IconKeyboard, IconChartBar, IconTrophy, IconLeaf, IconSettings, IconLayoutNavbarCollapse } from '@tabler/icons-react';
 
 // Code Snippets Library
 const CODE_SNIPPETS = {
@@ -795,16 +796,11 @@ const DIFFICULTY_CONFIG = {
 };
 
 const THEMES = {
-  midnight: { name: 'Midnight', card: 'bg-slate-800/50', accent: 'from-blue-600 to-purple-600', bg: 'from-slate-950 via-slate-900 to-slate-950' },
-  forest: { name: 'Forest', card: 'bg-emerald-900/50', accent: 'from-emerald-600 to-teal-600', bg: 'from-emerald-950 via-green-900 to-emerald-950' },
-  sunset: { name: 'Sunset', card: 'bg-orange-900/50', accent: 'from-orange-600 to-rose-600', bg: 'from-orange-950 via-rose-900 to-orange-950' },
-  ocean: { name: 'Ocean', card: 'bg-cyan-900/50', accent: 'from-cyan-600 to-blue-600', bg: 'from-cyan-950 via-blue-900 to-cyan-950' },
-  dracula: { name: 'Dracula', card: 'bg-[#282a36]/70', accent: 'from-[#bd93f9] to-[#ff79c6]', bg: 'from-[#1a1b26] via-[#282a36] to-[#1a1b26]' },
-  nord: { name: 'Nord', card: 'bg-[#3b4252]/60', accent: 'from-[#88c0d0] to-[#81a1c1]', bg: 'from-[#2e3440] via-[#3b4252] to-[#2e3440]' },
-  monokai: { name: 'Monokai', card: 'bg-[#272822]/70', accent: 'from-[#f92672] to-[#fd971f]', bg: 'from-[#1e1f1c] via-[#272822] to-[#1e1f1c]' },
-  catppuccin: { name: 'Catppuccin', card: 'bg-[#1e1e2e]/60', accent: 'from-[#cba6f7] to-[#f5c2e7]', bg: 'from-[#11111b] via-[#1e1e2e] to-[#11111b]' },
-  gruvbox: { name: 'Gruvbox', card: 'bg-[#3c3836]/60', accent: 'from-[#fabd2f] to-[#fe8019]', bg: 'from-[#1d2021] via-[#282828] to-[#1d2021]' },
-  rosepine: { name: 'Rosé Pine', card: 'bg-[#26233a]/60', accent: 'from-[#c4a7e7] to-[#ebbcba]', bg: 'from-[#191724] via-[#26233a] to-[#191724]' },
+  dark: { name: 'Dark' },
+  nord: { name: 'Nord' },
+  catppuccin: { name: 'Catppuccin' },
+  gruvbox: { name: 'Gruvbox' },
+  rosepine: { name: 'Rosé Pine' },
 };
 
 // Tokenize code for syntax highlighting
@@ -959,196 +955,18 @@ const useSnippetHistory = () => {
   return { getNextSnippet };
 };
 
-// ===== ANIMATION COMPONENTS =====
+// ===== UI COMPONENTS =====
 
-// Custom Cursor Component
-const CustomCursor = () => {
-  const dotRef = useRef(null);
-  const ringRef = useRef(null);
-  const trailsRef = useRef([]);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
-  const lastTrailTime = useRef(0);
-
-  useEffect(() => {
-    const moveCursor = (e) => {
-      const { clientX, clientY } = e;
-
-      if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${clientX - 4}px, ${clientY - 4}px)`;
-      }
-      if (ringRef.current) {
-        ringRef.current.style.transform = `translate(${clientX - 10}px, ${clientY - 10}px)`;
-      }
-
-      // Create trail particles (throttled)
-      const now = Date.now();
-      if (now - lastTrailTime.current > 50) {
-        lastTrailTime.current = now;
-        const trail = document.createElement('div');
-        trail.className = 'cursor-trail';
-        trail.style.left = `${clientX}px`;
-        trail.style.top = `${clientY}px`;
-        document.body.appendChild(trail);
-        setTimeout(() => trail.remove(), 500);
-      }
-    };
-
-    const handleMouseOver = (e) => {
-      if (e.target.closest('button, a, [role="button"], input, select, .cursor-hover')) {
-        setIsHovering(true);
-      } else {
-        setIsHovering(false);
-      }
-    };
-
-    const handleMouseDown = () => setIsClicking(true);
-    const handleMouseUp = () => setIsClicking(false);
-
-    document.addEventListener('mousemove', moveCursor);
-    document.addEventListener('mouseover', handleMouseOver);
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', moveCursor);
-      document.removeEventListener('mouseover', handleMouseOver);
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
-  return (
-    <>
-      <div ref={dotRef} className={`cursor-dot ${isClicking ? 'clicking' : ''}`} />
-      <div ref={ringRef} className={`cursor-ring ${isHovering ? 'hovering' : ''} ${isClicking ? 'clicking' : ''}`} />
-    </>
-  );
-};
-
-// Floating Particles Background
-const FloatingParticles = ({ count = 20 }) => {
-  const particles = useMemo(() => {
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      delay: Math.random() * 20,
-      duration: 15 + Math.random() * 20,
-      size: 2 + Math.random() * 4,
-      color: ['#8b5cf6', '#06b6d4', '#ec4899', '#3b82f6'][Math.floor(Math.random() * 4)],
-    }));
-  }, [count]);
-
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute rounded-full opacity-30"
-          style={{
-            left: p.left,
-            width: p.size,
-            height: p.size,
-            background: p.color,
-            animation: `float-particle ${p.duration}s infinite linear`,
-            animationDelay: `-${p.delay}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-// Code Particles (floating code symbols)
-const CodeParticles = () => {
-  const symbols = ['{ }', '< />', '( )', '[ ]', '=>', '&&', '||', '++', '**', '//'];
-  const particles = useMemo(() => {
-    return Array.from({ length: 15 }, (_, i) => ({
-      id: i,
-      symbol: symbols[Math.floor(Math.random() * symbols.length)],
-      left: `${Math.random() * 100}%`,
-      delay: Math.random() * 30,
-      duration: 25 + Math.random() * 15,
-    }));
-  }, []);
-
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="code-particle"
-          style={{
-            left: p.left,
-            animation: `code-float ${p.duration}s infinite linear`,
-            animationDelay: `-${p.delay}s`,
-          }}
-        >
-          {p.symbol}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Animated Grid Background
-const GridBackground = () => (
-  <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    <div className="grid-bg" />
-    <div className="grid-lines">
-      <div className="grid-line-h" style={{ animationDelay: '0s' }} />
-      <div className="grid-line-h" style={{ animationDelay: '2s' }} />
-      <div className="grid-line-h" style={{ animationDelay: '4s' }} />
-      <div className="grid-line-v" style={{ animationDelay: '1s' }} />
-      <div className="grid-line-v" style={{ animationDelay: '3s' }} />
-      <div className="grid-line-v" style={{ animationDelay: '5s' }} />
-    </div>
-  </div>
-);
-
-// Glitch Text Component
-const GlitchText = ({ children, className = '' }) => (
-  <span className={`glitch-text ${className}`} data-text={children}>
+// Plain Button (replaces RippleButton)
+const RippleButton = ({ children, onClick, className = '', ...props }) => (
+  <button
+    onClick={onClick}
+    className={`transition-all duration-150 active:scale-[0.98] ${className}`}
+    {...props}
+  >
     {children}
-  </span>
+  </button>
 );
-
-// Ripple Button Component
-const RippleButton = ({ children, onClick, className = '', ...props }) => {
-  const buttonRef = useRef(null);
-
-  const createRipple = (e) => {
-    const button = buttonRef.current;
-    if (!button) return;
-
-    const rect = button.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
-
-    const ripple = document.createElement('span');
-    ripple.className = 'ripple-effect';
-    ripple.style.width = ripple.style.height = `${size}px`;
-    ripple.style.left = `${x}px`;
-    ripple.style.top = `${y}px`;
-
-    button.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 600);
-
-    onClick?.(e);
-  };
-
-  return (
-    <button
-      ref={buttonRef}
-      onClick={createRipple}
-      className={`ripple btn-cyber ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
 
 // Page Transition Wrapper
 const PageTransition = ({ children, keyProp }) => (
@@ -1158,7 +976,7 @@ const PageTransition = ({ children, keyProp }) => (
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {children}
     </motion.div>
@@ -1166,7 +984,7 @@ const PageTransition = ({ children, keyProp }) => (
 );
 
 // Staggered Container
-const StaggerContainer = ({ children, className = '', staggerDelay = 0.1 }) => (
+const StaggerContainer = ({ children, className = '', staggerDelay = 0.05 }) => (
   <motion.div
     className={className}
     initial="hidden"
@@ -1190,8 +1008,8 @@ const StaggerItem = ({ children, className = '' }) => (
   <motion.div
     className={className}
     variants={{
-      hidden: { opacity: 0, y: 30 },
-      visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+      hidden: { opacity: 0, y: 10 },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
     }}
   >
     {children}
@@ -1202,140 +1020,120 @@ const StaggerItem = ({ children, className = '' }) => (
 const CountdownDisplay = ({ number }) => (
   <motion.div
     key={number}
-    initial={{ scale: 0.5, opacity: 0 }}
+    initial={{ scale: 0.8, opacity: 0 }}
     animate={{ scale: 1, opacity: 1 }}
-    exit={{ scale: 1.5, opacity: 0 }}
-    transition={{ duration: 0.5, ease: 'easeOut' }}
-    className="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500"
-    style={{
-      textShadow: '0 0 40px rgba(139, 92, 246, 0.5), 0 0 80px rgba(139, 92, 246, 0.3)',
-    }}
+    exit={{ scale: 1.1, opacity: 0 }}
+    transition={{ duration: 0.2, ease: 'easeOut' }}
+    className={`text-7xl font-semibold ${number === 0 ? 'text-violet-400' : 'text-white'}`}
   >
     {number === 0 ? 'GO!' : number}
   </motion.div>
 );
 
-// Confetti Celebration Component
-const Confetti = ({ show }) => {
-  const [pieces, setPieces] = useState([]);
 
-  useEffect(() => {
-    if (show) {
-      const colors = ['#8b5cf6', '#06b6d4', '#ec4899', '#3b82f6', '#fbbf24', '#10b981'];
-      const newPieces = Array.from({ length: 50 }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 0.5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: 6 + Math.random() * 8,
-        rotation: Math.random() * 360,
-      }));
-      setPieces(newPieces);
-      setTimeout(() => setPieces([]), 3500);
-    }
-  }, [show]);
-
-  if (!show && pieces.length === 0) return null;
-
+// Floating Dock (Aceternity UI — vertical left sidebar adaptation)
+const FloatingDockIconContainer = ({ mouseY, title, icon, onClick, active }) => {
+  const ref = useRef(null);
+  const distance = useTransform(mouseY, (val) => {
+    const bounds = ref.current?.getBoundingClientRect() ?? { y: 0, height: 0 };
+    return val - bounds.y - bounds.height / 2;
+  });
+  const sizeTransform = useTransform(distance, [-150, 0, 150], [40, 68, 40]);
+  const iconSizeTransform = useTransform(distance, [-150, 0, 150], [18, 32, 18]);
+  const size = useSpring(sizeTransform, { mass: 0.1, stiffness: 150, damping: 12 });
+  const iconSize = useSpring(iconSizeTransform, { mass: 0.1, stiffness: 150, damping: 12 });
+  const [hovered, setHovered] = useState(false);
   return (
-    <div className="confetti-container">
-      {pieces.map((piece) => (
-        <div
-          key={piece.id}
-          className="confetti-piece"
-          style={{
-            left: `${piece.left}%`,
-            backgroundColor: piece.color,
-            width: piece.size,
-            height: piece.size,
-            animationDelay: `${piece.delay}s`,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-          }}
-        />
-      ))}
-    </div>
+    <button onClick={onClick} className="relative flex items-center justify-center">
+      <motion.div
+        ref={ref}
+        style={{ width: size, height: size }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className={`relative flex items-center justify-center rounded-full transition-colors ${active
+          ? 'bg-violet-500/15 text-violet-400'
+          : 'bg-[#27272a] text-zinc-400 hover:bg-[#3f3f46] hover:text-zinc-200'
+        }`}
+      >
+        {active && (
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[7px] w-1.5 h-1.5 rounded-full bg-violet-500" />
+        )}
+        <AnimatePresence>
+          {hovered && (
+            <motion.div
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md bg-[#27272a] border border-[#3f3f46] text-xs text-white whitespace-nowrap z-50 pointer-events-none"
+            >
+              {title}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <motion.div style={{ width: iconSize, height: iconSize }} className="flex items-center justify-center">
+          {icon}
+        </motion.div>
+      </motion.div>
+    </button>
   );
 };
 
-const Logo = ({ onClick, size = 'large' }) => (
-  <button onClick={onClick} className="flex items-center gap-3 group transition-transform duration-200 hover:scale-105">
-    <div className={`${size === 'large' ? 'w-14 h-14' : 'w-10 h-10'} rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20`}>
-      <svg className={`${size === 'large' ? 'w-8 h-8' : 'w-5 h-5'} text-white`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-      </svg>
-    </div>
-    {size !== 'icon' && (
-      <div className="text-left">
-        <h1 className={`${size === 'large' ? 'text-2xl' : 'text-xl'} font-bold text-white`}>Code Racer</h1>
-        {size === 'large' && <p className="text-white/40 text-sm">Master your typing speed</p>}
-      </div>
-    )}
-  </button>
-);
+const FloatingDockDesktop = ({ items, className }) => {
+  const mouseY = useMotionValue(Infinity);
+  return (
+    <motion.div
+      onMouseMove={(e) => mouseY.set(e.pageY)}
+      onMouseLeave={() => mouseY.set(Infinity)}
+      className={`hidden md:flex flex-col items-center gap-3 rounded-2xl bg-[#18181b] border border-[#3f3f46] py-4 px-3 ${className ?? ''}`}
+    >
+      {items.map((item) => (
+        <FloatingDockIconContainer mouseY={mouseY} key={item.title} {...item} />
+      ))}
+    </motion.div>
+  );
+};
 
-// Navbar Component
-const Navbar = ({ screen, setScreen, totalRaces, topWpm, streak, setShowSettings }) => (
-  <motion.nav
-    initial={{ y: -20, opacity: 0 }}
-    animate={{ y: 0, opacity: 1 }}
-    className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-white/5"
-  >
-    <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-8">
-        <Logo onClick={() => setScreen('home')} size="icon" />
-        <div className="hidden md:flex items-center gap-1">
-          {[
-            { id: 'home', label: 'Home', icon: '🏠' },
-            { id: 'menu', label: 'Play', icon: '🎮' },
-            { id: 'stats', label: 'Stats', icon: '📊' },
-            { id: 'achievements', label: 'Achievements', icon: '🏆' },
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={() => setScreen(item.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${screen === item.id
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              <span className="mr-2">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        {totalRaces > 0 && (
-          <div className="hidden sm:flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
-              <span className="text-white/50">🏁</span>
-              <span className="text-white font-medium">{totalRaces}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
-              <span className="text-white/50">⚡</span>
-              <span className="text-blue-400 font-medium">{topWpm} WPM</span>
-            </div>
-            {streak > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                <span>🔥</span>
-                <span className="text-orange-400 font-medium">{streak}</span>
-              </div>
-            )}
-          </div>
+const FloatingDockMobile = ({ items, className }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`relative block md:hidden ${className ?? ''}`}>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            layoutId="nav-mobile"
+            className="absolute inset-x-0 bottom-full mb-2 flex flex-col gap-2 items-center"
+          >
+            {items.map((item, idx) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10, transition: { delay: idx * 0.05 } }}
+                transition={{ delay: (items.length - 1 - idx) * 0.05 }}
+              >
+                <button
+                  onClick={() => { item.onClick(); setOpen(false); }}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${item.active
+                    ? 'bg-violet-500/20 text-violet-400'
+                    : 'bg-[#27272a] text-zinc-400 hover:bg-[#3f3f46]'
+                  }`}
+                >
+                  <div className="h-4 w-4">{item.icon}</div>
+                </button>
+              </motion.div>
+            ))}
+          </motion.div>
         )}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-      </div>
+      </AnimatePresence>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-[#27272a] border border-[#3f3f46] text-zinc-400"
+      >
+        <IconLayoutNavbarCollapse className="h-5 w-5" />
+      </button>
     </div>
-  </motion.nav>
-);
+  );
+};
 
 // Footer Component
 const Footer = ({ setShowContact, setShowAbout }) => (
@@ -1373,22 +1171,13 @@ const BentoCard = ({ children, className = '', span = 1, onClick }) => (
     className={`
       ${span === 2 ? 'col-span-2' : 'col-span-1'}
       ${onClick ? 'cursor-pointer' : ''}
-      bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-5
-      hover:bg-white/10 hover:border-white/20 transition-all duration-300
-      glow-hover
+      bg-[#18181b] rounded-2xl border border-[#3f3f46] p-5
+      hover:bg-[#27272a] hover:border-zinc-600 transition-all duration-200
       ${className}
     `}
   >
     {children}
   </motion.div>
-);
-
-const StatCard = ({ label, value, subtext }) => (
-  <div className="text-center">
-    <div className="text-3xl font-bold text-white mb-1">{value}</div>
-    <div className="text-sm text-white/50">{label}</div>
-    {subtext && <div className="text-xs text-white/30 mt-1">{subtext}</div>}
-  </div>
 );
 
 // Achievement notification popup
@@ -1507,6 +1296,57 @@ const AboutModal = ({ isOpen, onClose }) => {
   );
 };
 
+const SettingsModal = ({ isOpen, onClose, selectedTheme, setSelectedTheme, fontSize, setFontSize, soundEnabled, setSoundEnabled, showTimer, setShowTimer, ghostEnabled, setGhostEnabled }) => {
+  if (!isOpen) return null;
+  const toggle = (val, set) => () => set(!val);
+  const ToggleBtn = ({ on, onToggle, label }) => (
+    <div>
+      <label className="text-xs text-zinc-500 block mb-2">{label}</label>
+      <button onClick={onToggle} className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all ${on ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30' : 'bg-[#27272a] text-zinc-500 border border-[#3f3f46] hover:border-zinc-500'}`}>
+        {on ? 'On' : 'Off'}
+      </button>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative bg-[#18181b] border border-[#3f3f46] rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white">Settings</h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="space-y-5">
+          <div>
+            <label className="text-xs text-zinc-500 block mb-2">Theme</label>
+            <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)} className="w-full bg-[#27272a] border border-[#3f3f46] rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500">
+              {Object.entries(THEMES).map(([key, t]) => (<option key={key} value={key}>{t.name}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500 block mb-2">Font Size</label>
+            <div className="flex gap-2">
+              {[['sm', 'Small'], ['base', 'Medium'], ['lg', 'Large']].map(([val, label]) => (
+                <button key={val} onClick={() => setFontSize(val)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${fontSize === val ? 'bg-[#27272a] text-white border border-zinc-500' : 'bg-[#09090b] text-zinc-500 border border-[#3f3f46] hover:border-zinc-600'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <ToggleBtn on={soundEnabled} onToggle={toggle(soundEnabled, setSoundEnabled)} label="Sound" />
+            <ToggleBtn on={showTimer} onToggle={toggle(showTimer, setShowTimer)} label="Timer" />
+            <ToggleBtn on={ghostEnabled} onToggle={toggle(ghostEnabled, setGhostEnabled)} label="Ghost" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CodeTypeRacer() {
   const [screen, setScreen] = useState('home');
   const [currentSnippet, setCurrentSnippet] = useState(null);
@@ -1523,7 +1363,7 @@ export default function CodeTypeRacer() {
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [selectedDifficulty, setSelectedDifficulty] = useState('beginner');
-  const [selectedTheme, setSelectedTheme] = useState('midnight');
+  const [selectedTheme, setSelectedTheme] = useState('dark');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showTimer, setShowTimer] = useState(true);
   const [fontSize, setFontSize] = useState('base');
@@ -1531,6 +1371,9 @@ export default function CodeTypeRacer() {
   const [showContact, setShowContact] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [ghostEnabled, setGhostEnabled] = useState(true);
+  const [isZenMode, setIsZenMode] = useState(false);
+  const [zenSnippetsCompleted, setZenSnippetsCompleted] = useState(0);
+  const [zenSessionStartTime, setZenSessionStartTime] = useState(null);
 
   const [bestScores, setBestScores] = useState({});
   const [totalRaces, setTotalRaces] = useState(0);
@@ -1545,24 +1388,9 @@ export default function CodeTypeRacer() {
   const [isPersonalRecord, setIsPersonalRecord] = useState(false);
   const raceRecordRef = useRef([]);
 
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
-
   const inputRef = useRef(null);
   const sounds = useSound();
   const { getNextSnippet } = useSnippetHistory();
-  const theme = THEMES[selectedTheme];
-
-  // Mouse tracking for aurora
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100,
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1595,6 +1423,12 @@ export default function CodeTypeRacer() {
           startGame();
         }
       }
+
+      if (e.key === 'z' || e.key === 'Z') {
+        if (screen === 'menu') {
+          startZenMode();
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -1617,7 +1451,7 @@ export default function CodeTypeRacer() {
       if (achievements) setUnlockedAchievements(JSON.parse(achievements));
       if (settings) {
         const s = JSON.parse(settings);
-        setSelectedTheme(s.theme || 'midnight');
+        setSelectedTheme(s.theme || 'dark');
         setSoundEnabled(s.sound !== false);
         setShowTimer(s.timer !== false);
         setFontSize(s.fontSize || 'base');
@@ -1764,6 +1598,35 @@ export default function CodeTypeRacer() {
     }
   };
 
+  const startZenMode = () => {
+    setIsZenMode(true);
+    setZenSnippetsCompleted(0);
+    setZenSessionStartTime(Date.now());
+    startZenSnippet();
+  };
+
+  const startZenSnippet = () => {
+    const snippet = getNextSnippet(selectedCategory, selectedLanguage, selectedDifficulty);
+    if (!snippet) {
+      alert('No snippets available for this combination.');
+      return;
+    }
+    setCurrentSnippet(snippet);
+    setTypedText('');
+    setErrors(0);
+    setTotalKeystrokes(0);
+    setStartTime(Date.now());
+    setEndTime(null);
+    setCurrentWpm(0);
+    setElapsedDisplay('0.0');
+    raceRecordRef.current = [];
+    setGhostProgress(0);
+    setCurrentGhost(null);
+    setIsPersonalRecord(false);
+    setScreen('playing');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
   useEffect(() => {
     if (screen === 'countdown') {
       if (countdown > 0) {
@@ -1804,7 +1667,12 @@ export default function CodeTypeRacer() {
     }
 
     if (e.key === 'Escape') {
-      setScreen('menu');
+      if (isZenMode) {
+        setIsZenMode(false);
+        setScreen('zen_summary');
+      } else {
+        setScreen('menu');
+      }
       return;
     }
 
@@ -1891,12 +1759,41 @@ export default function CodeTypeRacer() {
   const finishRace = () => {
     const end = Date.now();
     setEndTime(end);
-    setScreen('finished');
 
     const elapsed = (end - startTime) / 1000 / 60;
     const words = currentSnippet.code.length / 5;
     const finalWpm = Math.round(words / elapsed);
     const accuracy = totalKeystrokes > 0 ? Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100) : 100;
+
+    if (isZenMode) {
+      saveBestScore(finalWpm);
+      const newTotalRaces = totalRaces + 1;
+      setTotalRaces(newTotalRaces);
+      localStorage.setItem('coderacer-races', newTotalRaces.toString());
+      saveRaceHistory(finalWpm, accuracy, selectedLanguage, selectedCategory, selectedDifficulty);
+      setStreak(prev => prev + 1);
+
+      setTimeout(() => {
+        checkAchievements(getAchievementStats({
+          wpm: finalWpm, accuracy,
+          language: selectedLanguage,
+          category: selectedCategory,
+          difficulty: selectedDifficulty,
+        }));
+      }, 500);
+
+      setZenSnippetsCompleted(prev => prev + 1);
+      setScreen('zen_interstitial');
+      if (soundEnabled) sounds.playSuccess();
+
+      setTimeout(() => {
+        startZenSnippet();
+      }, 1500);
+
+      return;
+    }
+
+    setScreen('finished');
 
     const isNewBest = saveBestScore(finalWpm);
     setIsPersonalRecord(isNewBest);
@@ -1914,7 +1811,6 @@ export default function CodeTypeRacer() {
     setTotalRaces(newTotalRaces);
     localStorage.setItem('coderacer-races', newTotalRaces.toString());
 
-    // Save race history
     const raceData = {
       wpm: finalWpm,
       accuracy,
@@ -1924,7 +1820,6 @@ export default function CodeTypeRacer() {
     };
     saveRaceHistory(finalWpm, accuracy, selectedLanguage, selectedCategory, selectedDifficulty);
 
-    // Check achievements
     setTimeout(() => {
       checkAchievements(getAchievementStats(raceData));
     }, 500);
@@ -1957,9 +1852,9 @@ export default function CodeTypeRacer() {
 
             let colorClass = getTokenColor(token.type);
             if (isTyped) {
-              colorClass = 'text-teal-400'; // Teal green for typed text
+              colorClass = 'text-violet-300';
             } else if (isPlayerPosition) {
-              colorClass = 'text-white bg-gradient-to-r from-purple-500/40 to-cyan-500/40 rounded-sm caret-pulse';
+              colorClass = 'text-white bg-white/10 rounded-sm caret-pulse';
             }
 
             return (
@@ -2019,45 +1914,48 @@ export default function CodeTypeRacer() {
   };
   const ghostTimeDiff = getGhostTimeDiff();
 
-  // Detect touch device for custom cursor
-  const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-hidden custom-cursor-active">
-      {/* Custom Cursor - disabled on touch devices */}
-      {!isTouchDevice && <CustomCursor />}
-
-      {/* Aurora Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${theme.bg} animate-gradient-shift`} />
-        <div className="absolute w-[600px] h-[600px] rounded-full opacity-20 blur-[100px]" style={{ background: 'linear-gradient(180deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)', left: `calc(${mousePos.x}% - 300px)`, top: `calc(${mousePos.y}% - 300px)`, transition: 'left 0.8s ease-out, top 0.8s ease-out' }} />
-        <div className="absolute w-[400px] h-[400px] rounded-full opacity-15 blur-[80px]" style={{ background: 'linear-gradient(180deg, #06b6d4 0%, #3b82f6 100%)', left: `calc(${mousePos.x}% - 100px)`, top: `calc(${mousePos.y}% - 100px)`, transition: 'left 0.5s ease-out, top 0.5s ease-out' }} />
-        <div className="absolute w-[500px] h-[500px] rounded-full opacity-10 blur-[100px]" style={{ background: 'linear-gradient(180deg, #a855f7 0%, #6366f1 100%)', left: `calc(${100 - mousePos.x}% - 250px)`, top: `calc(${100 - mousePos.y}% - 250px)`, transition: 'left 1s ease-out, top 1s ease-out' }} />
-      </div>
-
-      {/* Animated Background Elements - disabled during gameplay for performance */}
-      {screen !== 'playing' && <FloatingParticles count={25} />}
-      {screen !== 'playing' && <CodeParticles />}
-      <GridBackground />
+    <div className="min-h-screen bg-[#09090b] text-white overflow-hidden">
+      {/* Background */}
+      <div className="fixed inset-0" style={{ background: 'radial-gradient(ellipse at 30% -5%, rgba(139, 92, 246, 0.07) 0%, #09090b 55%)' }} />
 
       <ContactModal isOpen={showContact} onClose={() => setShowContact(false)} />
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
-      <AchievementPopup achievement={newAchievement} onClose={() => setNewAchievement(null)} />
-      <Confetti show={isPersonalRecord && screen === 'finished'} />
-
-      {/* Persistent Navbar */}
-      <Navbar
-        screen={screen}
-        setScreen={setScreen}
-        totalRaces={totalRaces}
-        topWpm={topWpm}
-        streak={streak}
-        setShowSettings={setShowSettings}
+      <SettingsModal
+        isOpen={showSettings} onClose={() => setShowSettings(false)}
+        selectedTheme={selectedTheme} setSelectedTheme={setSelectedTheme}
+        fontSize={fontSize} setFontSize={setFontSize}
+        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
+        showTimer={showTimer} setShowTimer={setShowTimer}
+        ghostEnabled={ghostEnabled} setGhostEnabled={setGhostEnabled}
       />
+      <AchievementPopup achievement={newAchievement} onClose={() => setNewAchievement(null)} />
+
+      {/* Floating Dock — hidden during active race/countdown */}
+      {!['playing', 'countdown', 'zen_interstitial', 'zen_summary'].includes(screen) && (
+        <>
+          <FloatingDockDesktop items={[
+            { title: 'Home', icon: <IconHome size={18} />, onClick: () => setScreen('home'), active: screen === 'home' },
+            { title: 'Race', icon: <IconKeyboard size={18} />, onClick: () => setScreen('menu'), active: screen === 'menu' },
+            { title: 'Stats', icon: <IconChartBar size={18} />, onClick: () => setScreen('stats'), active: screen === 'stats' },
+            { title: 'Achievements', icon: <IconTrophy size={18} />, onClick: () => setScreen('achievements'), active: screen === 'achievements' },
+            { title: 'Zen Mode', icon: <IconLeaf size={18} />, onClick: startZenMode },
+            { title: 'Settings', icon: <IconSettings size={18} />, onClick: () => setShowSettings(true) },
+          ]} className="fixed left-4 top-1/2 -translate-y-1/2 z-50" />
+          <FloatingDockMobile items={[
+            { title: 'Home', icon: <IconHome size={18} />, onClick: () => setScreen('home'), active: screen === 'home' },
+            { title: 'Race', icon: <IconKeyboard size={18} />, onClick: () => setScreen('menu'), active: screen === 'menu' },
+            { title: 'Stats', icon: <IconChartBar size={18} />, onClick: () => setScreen('stats'), active: screen === 'stats' },
+            { title: 'Achievements', icon: <IconTrophy size={18} />, onClick: () => setScreen('achievements'), active: screen === 'achievements' },
+            { title: 'Zen', icon: <IconLeaf size={18} />, onClick: startZenMode },
+            { title: 'Settings', icon: <IconSettings size={18} />, onClick: () => setShowSettings(true) },
+          ]} className="fixed bottom-6 right-4 z-50" />
+        </>
+      )}
 
       {/* Main Content Area */}
-      <div className="relative z-10 min-h-screen flex flex-col pt-16">
-        <div className="flex-1 container mx-auto px-6 py-8 max-w-7xl">
+      <div className="relative z-10 min-h-screen flex flex-col">
+        <div className="flex-1 container mx-auto px-6 py-8 max-w-5xl md:pl-24">
 
           <AnimatePresence mode="wait">
             {screen === 'home' && (
@@ -2066,111 +1964,141 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.4 }}
-                className="min-h-[80vh] flex flex-col items-center justify-center"
+                transition={{ duration: 0.2 }}
+                className="min-h-[80vh] flex items-center py-12"
               >
-                <StaggerContainer className="text-center mb-12">
-                  <StaggerItem>
+                <div className="w-full flex flex-col md:flex-row items-start gap-12 md:gap-16">
+                  {/* Left column — hero + actions */}
+                  <div className="flex-1 max-w-sm">
+                    <StaggerContainer staggerDelay={0.05}>
+                      <StaggerItem>
+                        <motion.div
+                          className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6"
+                          whileHover={{ scale: 1.08, rotate: 4 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                          </svg>
+                        </motion.div>
+                      </StaggerItem>
+                      <StaggerItem>
+                        <h1 className="text-5xl font-bold tracking-tight text-white mb-3">Code Racer</h1>
+                        <p className="text-zinc-400 text-base leading-relaxed mb-2">Improve your coding speed with real snippets. Race your personal best.</p>
+                        <div className="inline-flex items-center gap-2 mb-8 px-3 py-1.5 bg-purple-500/10 rounded-full border border-purple-500/20">
+                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">New</span>
+                          <span className="text-xs text-zinc-400">DSA Mode — algorithms &amp; data structures</span>
+                        </div>
+                      </StaggerItem>
+                      <StaggerItem>
+                        <RippleButton onClick={() => setScreen('menu')} className="w-full py-3.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-zinc-950 font-semibold text-base mb-3">
+                          Start Racing
+                        </RippleButton>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <RippleButton onClick={() => setScreen('stats')} className="py-2.5 rounded-xl border border-[#3f3f46] text-sm font-medium hover:bg-[#27272a] text-zinc-300">
+                            Stats
+                          </RippleButton>
+                          <RippleButton onClick={() => setScreen('achievements')} className="py-2.5 rounded-xl border border-[#3f3f46] text-sm font-medium hover:bg-[#27272a] text-zinc-300">
+                            Achievements
+                          </RippleButton>
+                        </div>
+                        <RippleButton onClick={startZenMode} className="w-full py-2.5 rounded-xl border border-[#3f3f46] text-sm font-medium hover:bg-[#27272a] text-zinc-400 flex items-center justify-center gap-2">
+                          <span>☯</span> Zen Mode — no pressure, just flow
+                        </RippleButton>
+                      </StaggerItem>
+                    </StaggerContainer>
+                  </div>
+
+                  {/* Right column — stats + feature info */}
+                  <div className="w-full md:w-72 flex flex-col gap-4">
                     <motion.div
-                      className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-purple-500/30 mx-auto mb-6 breathing-glow"
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      whileTap={{ scale: 0.95 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 }}
+                      className="bg-[#18181b] rounded-2xl border border-[#3f3f46] overflow-hidden"
                     >
-                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                      </svg>
+                      <div className="px-5 py-4 border-b border-[#3f3f46]">
+                        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Your progress</p>
+                      </div>
+                      {totalRaces > 0 ? (
+                        <div className="grid grid-cols-3 divide-x divide-[#3f3f46]">
+                          <div className="px-4 py-5 text-center">
+                            <div className="text-2xl font-bold text-white tabular-nums">{totalRaces}</div>
+                            <div className="text-[11px] text-zinc-500 mt-1">Races</div>
+                          </div>
+                          <div className="px-4 py-5 text-center">
+                            <div className="text-2xl font-bold text-blue-400 tabular-nums">{topWpm}</div>
+                            <div className="text-[11px] text-zinc-500 mt-1">Top WPM</div>
+                          </div>
+                          <div className="px-4 py-5 text-center">
+                            <div className="text-2xl font-bold text-violet-400 tabular-nums">{avgWpm}</div>
+                            <div className="text-[11px] text-zinc-500 mt-1">Avg WPM</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="px-5 py-6 text-center">
+                          <p className="text-zinc-500 text-sm mb-3">No races yet</p>
+                          <button onClick={() => setScreen('menu')} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Start your first race →</button>
+                        </div>
+                      )}
                     </motion.div>
-                  </StaggerItem>
-                  <StaggerItem>
-                    <h1 className="text-5xl font-bold text-white mb-4">
-                      <GlitchText>Code Racer</GlitchText>
-                    </h1>
-                  </StaggerItem>
-                  <StaggerItem>
-                    <p className="text-white/50 text-lg max-w-md mx-auto">Improve your coding speed with real code snippets and race against your personal best</p>
-                  </StaggerItem>
-                  <StaggerItem>
+
                     <motion.div
-                      className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30 holographic"
-                      whileHover={{ scale: 1.05 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35 }}
+                      className="bg-[#18181b] rounded-2xl border border-[#3f3f46] overflow-hidden"
                     >
-                      <span className="text-xs font-semibold text-purple-400">NEW</span>
-                      <span className="text-sm text-white/70">DSA Mode - Practice algorithms</span>
+                      {raceHistory.length > 0 ? (
+                        <>
+                          <div className="px-5 py-4 border-b border-[#3f3f46]">
+                            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Recent races</p>
+                          </div>
+                          <div className="divide-y divide-[#27272a]">
+                            {[...raceHistory].reverse().slice(0, 3).map((race, i) => {
+                              const langColors = { javascript: 'text-yellow-400', python: 'text-blue-400', typescript: 'text-sky-400', cpp: 'text-indigo-400', java: 'text-red-400' };
+                              const ago = (() => {
+                                const diff = Date.now() - race.date;
+                                if (diff < 60000) return 'just now';
+                                if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+                                if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                                return `${Math.floor(diff / 86400000)}d ago`;
+                              })();
+                              return (
+                                <div key={i} className="flex items-center justify-between px-5 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold w-6 text-center ${langColors[race.language] ?? 'text-zinc-400'}`}>{LANGUAGE_CONFIG[race.language]?.icon}</span>
+                                    <span className="text-sm font-semibold text-white tabular-nums">{race.wpm} WPM</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                                    <span>{race.accuracy}%</span>
+                                    <span>{ago}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="p-5">
+                          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">What's inside</p>
+                          <div className="space-y-3">
+                            {[
+                              { label: '5 Languages', detail: 'JS, Python, Go, Rust, C++' },
+                              { label: '80+ Snippets', detail: 'Real-world code patterns' },
+                              { label: '3 Difficulties', detail: 'Beginner to advanced' },
+                            ].map(({ label, detail }) => (
+                              <div key={label} className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-white">{label}</span>
+                                <span className="text-xs text-zinc-500">{detail}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
-                  </StaggerItem>
-                </StaggerContainer>
-
-                {totalRaces > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className={`${theme.card} backdrop-blur-xl rounded-2xl p-6 border border-white/10 mb-8 w-full max-w-md glow-hover neon-border`}
-                  >
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <div className="text-2xl font-bold text-white">{totalRaces}</div>
-                        <div className="text-xs text-white/50">Races</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-blue-400">{topWpm}</div>
-                        <div className="text-xs text-white/50">Top WPM</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-emerald-400">{avgWpm}</div>
-                        <div className="text-xs text-white/50">Avg WPM</div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                <StaggerContainer className="flex flex-col gap-3 w-full max-w-md" staggerDelay={0.08}>
-                  <StaggerItem>
-                    <RippleButton onClick={() => setScreen('menu')} className={`w-full py-4 rounded-xl bg-gradient-to-r ${theme.accent} font-semibold text-lg glow-hover`}>
-                      <span className="relative z-10">Start Racing</span>
-                    </RippleButton>
-                  </StaggerItem>
-                  <StaggerItem>
-                    <div className="grid grid-cols-2 gap-3">
-                      <RippleButton onClick={() => setScreen('stats')} className="py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5 glow-hover">
-                        Stats
-                      </RippleButton>
-                      <RippleButton onClick={() => setScreen('achievements')} className="py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5 glow-hover">
-                        Achievements
-                      </RippleButton>
-                    </div>
-                  </StaggerItem>
-                  <StaggerItem>
-                    <RippleButton onClick={() => setShowAbout(true)} className="w-full py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5 glow-hover">
-                      How to Play
-                    </RippleButton>
-                  </StaggerItem>
-                  <StaggerItem>
-                    <RippleButton onClick={() => setShowContact(true)} className="w-full py-3 rounded-xl border border-white/10 font-medium hover:bg-white/5 text-white/70 glow-hover">
-                      Contact
-                    </RippleButton>
-                  </StaggerItem>
-                </StaggerContainer>
-
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                  className="grid grid-cols-3 gap-6 mt-12 w-full max-w-lg text-center"
-                >
-                  <motion.div className="p-4" whileHover={{ scale: 1.1, y: -5 }}>
-                    <div className="text-3xl font-bold mb-1 text-gradient">5</div>
-                    <div className="text-sm text-white/50">Languages</div>
-                  </motion.div>
-                  <motion.div className="p-4" whileHover={{ scale: 1.1, y: -5 }}>
-                    <div className="text-3xl font-bold mb-1 text-gradient">80+</div>
-                    <div className="text-sm text-white/50">Snippets</div>
-                  </motion.div>
-                  <motion.div className="p-4" whileHover={{ scale: 1.1, y: -5 }}>
-                    <div className="text-3xl font-bold mb-1 text-gradient">3</div>
-                    <div className="text-sm text-white/50">Difficulties</div>
-                  </motion.div>
-                </motion.div>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -2180,85 +2108,107 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
               >
-                <header className="flex items-center justify-between mb-8">
-                  <Logo onClick={() => setScreen('home')} size="small" />
-                </header>
-
-                <h2 className="text-2xl font-bold mb-6">Your Stats</h2>
+                <h2 className="text-3xl font-bold text-white mb-1">Stats</h2>
+                <p className="text-zinc-500 text-sm mb-8">Your performance over time</p>
 
                 {raceHistory.length === 0 ? (
-                  <div className={`${theme.card} backdrop-blur-xl rounded-xl p-8 border border-white/10 text-center`}>
-                    <p className="text-white/50">Complete some races to see your stats!</p>
-                    <button onClick={() => setScreen('menu')} className={`mt-4 px-6 py-2 rounded-lg bg-gradient-to-r ${theme.accent} font-medium`}>
+                  <div className="bg-[#18181b] rounded-xl p-10 border border-[#3f3f46] text-center">
+                    <p className="text-zinc-500 mb-4">No races yet — complete a race to see your stats</p>
+                    <button onClick={() => setScreen('menu')} className="px-6 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-600 text-zinc-950 font-semibold text-sm transition-colors">
                       Start Racing
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Summary stats */}
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 text-center card-hover`}>
-                        <div className="text-3xl font-bold text-white">{totalRaces}</div>
-                        <div className="text-xs text-white/50">Total Races</div>
-                      </div>
-                      <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 text-center card-hover`}>
-                        <div className="text-3xl font-bold text-blue-400">{maxWpmEver}</div>
-                        <div className="text-xs text-white/50">Best WPM</div>
-                      </div>
-                      <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 text-center card-hover`}>
-                        <div className="text-3xl font-bold text-emerald-400">{avgWpmRecent}</div>
-                        <div className="text-xs text-white/50">Avg WPM (L10)</div>
-                      </div>
-                      <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 text-center card-hover`}>
-                        <div className="text-3xl font-bold text-amber-400">{avgAccuracyRecent}%</div>
-                        <div className="text-xs text-white/50">Avg Accuracy</div>
-                      </div>
+                    {/* KPI row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Races', value: totalRaces, color: 'text-white' },
+                        { label: 'Best WPM', value: maxWpmEver, color: 'text-blue-400' },
+                        { label: 'Avg WPM', value: avgWpmRecent, color: 'text-violet-400' },
+                        { label: 'Accuracy', value: `${avgAccuracyRecent}%`, color: 'text-amber-400' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-4">
+                          <div className={`text-3xl font-bold tabular-nums ${color}`}>{value}</div>
+                          <div className="text-xs text-zinc-500 mt-1">{label}</div>
+                        </div>
+                      ))}
                     </div>
 
-                    {/* WPM History Chart */}
-                    <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10`}>
-                      <h3 className="font-medium mb-4">Recent Performance (WPM)</h3>
-                      <div className="flex items-end gap-1 h-32">
+                    {/* WPM chart — green bars */}
+                    <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-medium text-zinc-300">WPM over time</h3>
+                        <span className="text-xs text-zinc-500">last {last10Races.length} races</span>
+                      </div>
+                      <div className="flex items-end gap-1.5 h-44">
                         {last10Races.map((race, i) => {
                           const maxH = Math.max(...last10Races.map(r => r.wpm), 60);
                           const height = (race.wpm / maxH) * 100;
+                          const isLatest = i === last10Races.length - 1;
                           return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                              <div className="text-xs text-white/50">{race.wpm}</div>
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                              <div className="text-[10px] text-zinc-600 group-hover:text-zinc-400 transition-colors">{race.wpm}</div>
                               <div
-                                className="w-full bg-gradient-to-t from-blue-600 to-purple-600 rounded-t transition-all duration-300"
-                                style={{ height: `${height}%` }}
+                                className={`w-full rounded-t transition-all duration-300 ${isLatest ? 'bg-violet-500' : 'bg-violet-500/40 group-hover:bg-violet-500/70'}`}
+                                style={{ height: `${height}%`, minHeight: '4px' }}
                               />
                             </div>
                           );
                         })}
                       </div>
-                      <div className="text-xs text-white/30 text-center mt-2">Last {last10Races.length} races</div>
                     </div>
 
                     {/* Language breakdown */}
-                    <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10`}>
-                      <h3 className="font-medium mb-4">Races by Language</h3>
+                    <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-5">
+                      <h3 className="text-sm font-medium text-zinc-300 mb-4">Races by language</h3>
                       <div className="grid grid-cols-5 gap-2">
                         {Object.entries(LANGUAGE_CONFIG).map(([lang, config]) => {
                           const count = raceHistory.filter(r => r.language === lang).length;
+                          const langColors = { javascript: 'text-yellow-400', python: 'text-blue-400', typescript: 'text-sky-400', cpp: 'text-indigo-400', java: 'text-red-400' };
                           return (
-                            <div key={lang} className="text-center p-2 bg-white/5 rounded-lg">
-                              <div className={`w-8 h-8 rounded bg-gradient-to-br ${config.gradient} flex items-center justify-center font-bold text-xs mx-auto mb-1`}>
-                                {config.icon}
-                              </div>
-                              <div className="text-lg font-bold">{count}</div>
+                            <div key={lang} className="text-center p-3 bg-[#09090b] rounded-lg border border-[#3f3f46]">
+                              <div className={`font-bold text-sm mb-1 ${langColors[lang] ?? 'text-zinc-300'}`}>{config.icon}</div>
+                              <div className="text-lg font-bold text-white tabular-nums">{count}</div>
+                              <div className="text-[10px] text-zinc-600 mt-0.5">{config.label.replace('JavaScript', 'JS').replace('TypeScript', 'TS')}</div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
 
-                    <RippleButton onClick={() => setScreen('home')} className="w-full py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5 glow-hover">
-                      Back
-                    </RippleButton>
+                    {/* Recent races history */}
+                    <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] overflow-hidden">
+                      <div className="px-5 py-4 border-b border-[#3f3f46]">
+                        <h3 className="text-sm font-medium text-zinc-300">Recent races</h3>
+                      </div>
+                      <div className="divide-y divide-[#27272a]">
+                        {[...raceHistory].reverse().slice(0, 10).map((race, i) => {
+                          const langColors = { javascript: 'text-yellow-400', python: 'text-blue-400', typescript: 'text-sky-400', cpp: 'text-indigo-400', java: 'text-red-400' };
+                          const langIcons = { javascript: 'JS', python: 'PY', typescript: 'TS', cpp: 'C++', java: 'JV' };
+                          const ago = (() => {
+                            const s = Math.floor((Date.now() - race.date) / 1000);
+                            if (s < 60) return 'just now';
+                            const m = Math.floor(s / 60);
+                            if (m < 60) return `${m}m ago`;
+                            const h = Math.floor(m / 60);
+                            if (h < 24) return `${h}h ago`;
+                            return `${Math.floor(h / 24)}d ago`;
+                          })();
+                          return (
+                            <div key={i} className="flex items-center gap-4 px-5 py-3">
+                              <span className={`text-xs font-bold w-6 shrink-0 ${langColors[race.language] ?? 'text-zinc-400'}`}>{langIcons[race.language] ?? race.language}</span>
+                              <span className="text-sm font-semibold text-white tabular-nums w-12">{race.wpm} <span className="text-[10px] text-zinc-500 font-normal">wpm</span></span>
+                              <span className="text-sm text-zinc-400 tabular-nums w-14">{race.accuracy}<span className="text-[10px] text-zinc-500">%</span></span>
+                              <span className="text-xs text-zinc-600 capitalize">{race.difficulty}</span>
+                              <span className="ml-auto text-xs text-zinc-600">{ago}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -2270,58 +2220,69 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
               >
-                <header className="flex items-center justify-between mb-8">
-                  <Logo onClick={() => setScreen('home')} size="small" />
-                </header>
+                <div className="flex items-end justify-between mb-2">
+                  <h2 className="text-3xl font-bold text-white">Achievements</h2>
+                  <span className="text-sm text-zinc-500 tabular-nums">{unlockedAchievements.length} / {ACHIEVEMENTS.length}</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1 bg-[#27272a] rounded-full mb-4 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-violet-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(unlockedAchievements.length / ACHIEVEMENTS.length) * 100}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                  />
+                </div>
+                {/* Rarity summary */}
+                <div className="flex items-center gap-4 mb-8 text-sm">
+                  {['common', 'rare', 'epic', 'legendary'].map(rarity => {
+                    const count = ACHIEVEMENTS.filter(a => a.rarity === rarity && unlockedAchievements.includes(a.id)).length;
+                    const total = ACHIEVEMENTS.filter(a => a.rarity === rarity).length;
+                    const color = { common: 'text-zinc-400', rare: 'text-blue-400', epic: 'text-purple-400', legendary: 'text-amber-400' }[rarity];
+                    return (
+                      <span key={rarity} className={`${color} tabular-nums`}>
+                        {count}<span className="text-zinc-600">/{total}</span> <span className="text-zinc-600 capitalize text-xs">{rarity}</span>
+                      </span>
+                    );
+                  })}
+                </div>
 
-                <h2 className="text-2xl font-bold mb-2">Achievements</h2>
-                <p className="text-white/50 mb-6">{unlockedAchievements.length} / {ACHIEVEMENTS.length} unlocked</p>
-
-                <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {ACHIEVEMENTS.map(achievement => {
                     const unlocked = unlockedAchievements.includes(achievement.id);
-                    const rarityColors = {
-                      common: { bg: 'from-slate-600/20 to-slate-500/20', border: 'border-slate-400/30', icon: 'from-slate-500 to-slate-400', glow: '' },
-                      rare: { bg: 'from-blue-600/20 to-cyan-600/20', border: 'border-blue-400/40', icon: 'from-blue-500 to-cyan-500', glow: 'achievement-rare' },
-                      epic: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-400/40', icon: 'from-purple-500 to-pink-500', glow: 'achievement-epic' },
-                      legendary: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-400/50', icon: 'from-yellow-500 to-orange-500', glow: 'achievement-legendary' },
-                    };
-                    const rarity = rarityColors[achievement.rarity] || rarityColors.common;
+                    const rarityBorder = {
+                      common: 'border-l-zinc-500',
+                      rare: 'border-l-blue-500',
+                      epic: 'border-l-purple-500',
+                      legendary: 'border-l-amber-500',
+                    }[achievement.rarity] ?? 'border-l-zinc-500';
+                    const rarityLabel = {
+                      common: 'text-zinc-500',
+                      rare: 'text-blue-400',
+                      epic: 'text-purple-400',
+                      legendary: 'text-amber-400',
+                    }[achievement.rarity] ?? 'text-zinc-500';
                     return (
                       <div
                         key={achievement.id}
-                        className={`p-4 rounded-xl border transition-all card-hover ${unlocked
-                          ? `bg-gradient-to-br ${rarity.bg} ${rarity.border} ${rarity.glow}`
-                          : 'bg-white/5 border-white/5 opacity-50'
-                          }`}
+                        className={`p-4 rounded-xl bg-[#18181b] border border-[#3f3f46] border-l-4 ${rarityBorder} transition-all ${unlocked ? '' : 'opacity-40 grayscale'}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${unlocked ? `bg-gradient-to-br ${rarity.icon} text-white` : 'bg-white/10 text-white/30'
-                            }`}>
-                            {achievement.icon}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${unlocked ? 'text-white' : 'text-white/50'}`}>{achievement.title}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider ${achievement.rarity === 'legendary' ? 'bg-yellow-500/20 text-yellow-400' :
-                                achievement.rarity === 'epic' ? 'bg-purple-500/20 text-purple-400' :
-                                  achievement.rarity === 'rare' ? 'bg-blue-500/20 text-blue-400' :
-                                    'bg-slate-500/20 text-slate-400'
-                                }`}>{achievement.rarity}</span>
+                        <div className="flex items-start gap-3">
+                          <span className="text-xl leading-none mt-0.5">{achievement.icon}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-sm font-semibold text-white truncate">{achievement.title}</span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 ${rarityLabel}`}>{achievement.rarity}</span>
                             </div>
-                            <div className="text-xs text-white/40">{achievement.desc}</div>
+                            <p className="text-xs text-zinc-500 leading-snug">{achievement.desc}</p>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-
-                <RippleButton onClick={() => setScreen('home')} className="w-full py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5 glow-hover">
-                  Back
-                </RippleButton>
               </motion.div>
             )}
 
@@ -2331,114 +2292,94 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
               >
-                <header className="flex items-center justify-between mb-8">
-                  <Logo onClick={() => setScreen('home')} size="small" />
-                  <div className="flex items-center gap-3">
-                    {totalRaces > 0 && <div className="text-sm text-white/40">{totalRaces} races</div>}
-                    <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-lg transition-all duration-200 ${showSettings ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'}`}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
-                  </div>
-                </header>
+                <h2 className="text-3xl font-bold text-white mb-1">New Race</h2>
+                <p className="text-zinc-500 text-sm mb-8">Configure your next session</p>
 
-                {showSettings && (
-                  <div className={`${theme.card} backdrop-blur-xl rounded-2xl p-6 border border-white/10 mb-6 animate-slideDown`}>
-                    <h3 className="font-semibold mb-4">Settings</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                      <div>
-                        <label className="text-sm text-white/50 block mb-2">Theme</label>
-                        <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm">
-                          {Object.entries(THEMES).map(([key, t]) => (<option key={key} value={key}>{t.name}</option>))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/50 block mb-2">Font Size</label>
-                        <select value={fontSize} onChange={(e) => setFontSize(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm">
-                          <option value="sm">Small</option>
-                          <option value="base">Medium</option>
-                          <option value="lg">Large</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/50 block mb-2">Sound</label>
-                        <button onClick={() => setSoundEnabled(!soundEnabled)} className={`w-full px-3 py-2 rounded-lg text-sm transition-all ${soundEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-white/50 border border-white/10'}`}>
-                          {soundEnabled ? 'On' : 'Off'}
-                        </button>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/50 block mb-2">Timer</label>
-                        <button onClick={() => setShowTimer(!showTimer)} className={`w-full px-3 py-2 rounded-lg text-sm transition-all ${showTimer ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-white/50 border border-white/10'}`}>
-                          {showTimer ? 'On' : 'Off'}
-                        </button>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/50 block mb-2">Ghost</label>
-                        <button onClick={() => setGhostEnabled(!ghostEnabled)} className={`w-full px-3 py-2 rounded-lg text-sm transition-all ${ghostEnabled ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-slate-800 text-white/50 border border-white/10'}`}>
-                          {ghostEnabled ? 'On' : 'Off'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-6">
+                <div className="space-y-8">
+                  {/* Category — pill tabs */}
                   <div>
-                    <h2 className="text-sm font-medium text-white/50 mb-3">Category</h2>
-                    <div className="flex gap-2">
+                    <p className="text-sm font-medium text-zinc-400 mb-3">Category</p>
+                    <div className="inline-flex bg-[#18181b] border border-[#3f3f46] rounded-xl p-1 gap-1">
                       {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
-                        <button key={key} onClick={() => setSelectedCategory(key)} className={`flex-1 px-4 py-3 rounded-xl border transition-all duration-200 ${selectedCategory === key ? 'border-white/30 bg-white/10' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}>
-                          <div className="font-medium flex items-center justify-center gap-2">
-                            {config.label}
-                            {key === 'dsa' && <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/30 text-purple-300 rounded">NEW</span>}
-                          </div>
-                          <div className="text-xs text-white/40">{config.description}</div>
+                        <button
+                          key={key}
+                          onClick={() => setSelectedCategory(key)}
+                          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${selectedCategory === key
+                            ? 'bg-[#27272a] text-white shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          {config.label}
+                          {key === 'dsa' && <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-purple-500/25 text-purple-400 rounded font-bold uppercase">New</span>}
                         </button>
                       ))}
                     </div>
                   </div>
 
+                  {/* Language — grid with colored top-border accent */}
                   <div>
-                    <h2 className="text-sm font-medium text-white/50 mb-3">Language</h2>
+                    <p className="text-sm font-medium text-zinc-400 mb-3">Language</p>
                     <div className="grid grid-cols-5 gap-2">
-                      {Object.entries(LANGUAGE_CONFIG).map(([key, config]) => (
-                        <button key={key} onClick={() => setSelectedLanguage(key)} className={`relative p-3 rounded-xl border transition-all duration-200 ${selectedLanguage === key ? 'border-white/30 bg-white/10 scale-105' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}>
-                          <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center font-bold text-xs text-white mb-2 mx-auto`}>{config.icon}</div>
-                          <span className="text-xs font-medium">{config.label}</span>
-                        </button>
-                      ))}
+                      {Object.entries(LANGUAGE_CONFIG).map(([key, config]) => {
+                        const langColors = { javascript: 'text-yellow-400', python: 'text-blue-400', typescript: 'text-sky-400', cpp: 'text-indigo-400', java: 'text-red-400' };
+                        const langBorders = { javascript: 'border-t-yellow-500/60', python: 'border-t-blue-500/60', typescript: 'border-t-sky-500/60', cpp: 'border-t-indigo-500/60', java: 'border-t-red-500/60' };
+                        const active = selectedLanguage === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setSelectedLanguage(key)}
+                            className={`flex flex-col items-center gap-2.5 pt-4 pb-3 px-2 rounded-xl border border-t-2 transition-all duration-150 ${langBorders[key] ?? 'border-t-zinc-500/40'} ${active
+                              ? 'border-x-[#3f3f46] border-b-[#3f3f46] bg-[#27272a]'
+                              : 'border-x-[#3f3f46] border-b-[#3f3f46] bg-[#18181b] hover:bg-[#27272a]'
+                            }`}
+                          >
+                            <span className={`font-bold text-base ${langColors[key] ?? 'text-zinc-300'}`}>{config.icon}</span>
+                            <span className="text-[11px] text-zinc-400 leading-none">{config.label.replace('JavaScript', 'JS').replace('TypeScript', 'TS')}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
+                  {/* Difficulty — segmented control */}
                   <div>
-                    <h2 className="text-sm font-medium text-white/50 mb-3">Difficulty</h2>
-                    <div className="flex gap-2">
+                    <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Difficulty</p>
+                    <div className="flex bg-[#18181b] border border-[#3f3f46] rounded-xl p-1 gap-1">
                       {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => (
-                        <button key={key} onClick={() => setSelectedDifficulty(key)} className={`flex-1 px-4 py-3 rounded-xl border transition-all duration-200 ${selectedDifficulty === key ? `${config.bg} ${config.border} ${config.color}` : 'border-white/5 bg-white/5 hover:bg-white/10 text-white/60'}`}>
+                        <button
+                          key={key}
+                          onClick={() => setSelectedDifficulty(key)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${selectedDifficulty === key
+                            ? `bg-[#27272a] ${config.color}`
+                            : 'text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
                           {config.label}
                         </button>
                       ))}
                     </div>
                   </div>
 
+                  {/* Best / streak row */}
                   {(bestScore || streak > 0) && (
-                    <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10`}>
-                      <div className="flex items-center justify-between text-sm">
-                        {bestScore && <div className="text-white/50">Best: <span className="text-white font-medium">{bestScore} WPM</span></div>}
-                        {streak > 0 && <div className="text-orange-400">{streak} race streak</div>}
-                      </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      {bestScore && <span className="text-zinc-500">Best on this config: <span className="text-white font-medium">{bestScore} WPM</span></span>}
+                      {streak > 0 && <span className="text-orange-400 font-medium">🔥 {streak} streak</span>}
                     </div>
                   )}
 
-                  <RippleButton onClick={startGame} className={`w-full py-4 rounded-xl bg-gradient-to-r ${theme.accent} font-semibold text-lg glow-hover`}>
-                    Start Race
-                  </RippleButton>
+                  <div className="space-y-2">
+                    <RippleButton onClick={startGame} className="w-full py-3.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-zinc-950 font-semibold text-base">
+                      Start Race
+                    </RippleButton>
+                    <RippleButton onClick={startZenMode} className="w-full py-2.5 rounded-xl border border-[#3f3f46] text-sm font-medium hover:bg-[#27272a] text-zinc-400 flex items-center justify-center gap-2">
+                      <span>☯</span> Zen Mode
+                    </RippleButton>
+                  </div>
 
-                  <p className="text-center text-xs text-white/30">Press Enter to start</p>
+                  <p className="text-center text-xs text-zinc-600">Enter to start · Z for Zen Mode</p>
                 </div>
               </motion.div>
             )}
@@ -2451,8 +2392,7 @@ export default function CodeTypeRacer() {
                 exit={{ opacity: 0 }}
                 className="flex items-center justify-center h-96"
               >
-                <div className="relative countdown-pulse">
-                  <div className="countdown-ring" />
+                <div className="relative">
                   <AnimatePresence mode="wait">
                     <CountdownDisplay key={countdown} number={countdown} />
                   </AnimatePresence>
@@ -2466,47 +2406,52 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="space-y-4"
                 onClick={() => inputRef.current?.focus()}
               >
-                <header className="flex items-center justify-between mb-4">
-                  <Logo onClick={() => setScreen('home')} size="small" />
-                </header>
-
-                <div className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 flex items-center justify-between`}>
+                <div className={"bg-[#18181b] rounded-xl p-4 border border-[#3f3f46] flex items-center justify-between"}>
                   <div className="flex items-center gap-3">
-                    <div className={`px-3 py-1 rounded-lg bg-gradient-to-r ${LANGUAGE_CONFIG[selectedLanguage].gradient} font-bold text-sm`}>{LANGUAGE_CONFIG[selectedLanguage].icon}</div>
+                    <div className="px-3 py-1 rounded-lg bg-zinc-700 font-bold text-sm text-zinc-200">{LANGUAGE_CONFIG[selectedLanguage].icon}</div>
                     <div>
                       <div className="font-medium">{currentSnippet.title}</div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs ${DIFFICULTY_CONFIG[selectedDifficulty].color}`}>{DIFFICULTY_CONFIG[selectedDifficulty].label}</span>
+                        <span className="text-xs text-zinc-400">{DIFFICULTY_CONFIG[selectedDifficulty].label}</span>
                         <span className="text-xs text-white/30">•</span>
                         <span className="text-xs text-white/40">{CATEGORY_CONFIG[selectedCategory].label}</span>
-                        {currentGhost && ghostEnabled && <span className="text-xs text-purple-400 ml-1">Ghost Active</span>}
+                        {currentGhost && ghostEnabled && <span className="text-xs text-zinc-400 ml-1">Ghost Active</span>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
-                    {showTimer && (
+                    {isZenMode && (
+                      <div className="text-xs text-white/30 flex items-center gap-1">
+                        <span>☯</span> Zen · {zenSnippetsCompleted} done
+                      </div>
+                    )}
+                    {showTimer && !isZenMode && (
                       <div className="text-right">
                         <div className="text-2xl font-mono font-bold tabular-nums">{elapsedDisplay}s</div>
                         <div className="text-xs text-white/40">time</div>
                       </div>
                     )}
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-400">{currentWpm}</div>
-                      <div className="text-xs text-white/40">WPM</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-rose-400">{errors}</div>
-                      <div className="text-xs text-white/40">errors</div>
-                    </div>
+                    {!isZenMode && (
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-400">{currentWpm}</div>
+                        <div className="text-xs text-white/40">WPM</div>
+                      </div>
+                    )}
+                    {!isZenMode && (
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-rose-400">{errors}</div>
+                        <div className="text-xs text-white/40">errors</div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Code Display with CRT Effect */}
-                <div className={`${theme.card} backdrop-blur-xl rounded-xl p-6 border border-white/10 cursor-text crt-overlay screen-flicker ${errorShake ? 'error-shake error-flash' : ''}`}>
+                <div className={`bg-[#18181b] rounded-xl p-6 border border-[#3f3f46] cursor-text ${errorShake ? 'error-shake error-flash' : ''}`}>
                   {renderCode()}
                 </div>
 
@@ -2535,14 +2480,14 @@ export default function CodeTypeRacer() {
                   <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
                     {ghostEnabled && currentGhost && ghostProgress > 0 && (
                       <motion.div
-                        className="absolute h-full bg-purple-500/60 rounded-full"
+                        className="absolute h-full bg-zinc-500 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${ghostProgressPercent}%` }}
                         transition={{ duration: 0.1 }}
                       />
                     )}
                     <motion.div
-                      className={`absolute h-full bg-gradient-to-r ${theme.accent} rounded-full`}
+                      className="absolute h-full bg-violet-500 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 0.1 }}
@@ -2563,7 +2508,7 @@ export default function CodeTypeRacer() {
 
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-white/30">Esc to cancel</p>
-                  <button onClick={() => setScreen('menu')} className="text-sm text-white/40 hover:text-white/60 glow-hover">Cancel</button>
+                  <button onClick={() => setScreen('menu')} className="text-sm text-white/40 hover:text-white/60">Cancel</button>
                 </div>
               </motion.div>
             )}
@@ -2574,131 +2519,168 @@ export default function CodeTypeRacer() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
-                className="space-y-6"
+                transition={{ duration: 0.2 }}
+                className="max-w-2xl"
               >
-                <header className="flex items-center justify-between mb-4">
-                  <Logo onClick={() => setScreen('home')} size="small" />
-                </header>
-
+                {/* Hero WPM */}
                 <motion.div
-                  className="text-center py-6"
-                  initial={{ opacity: 0, y: -20 }}
+                  className="py-10 flex flex-col items-start"
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.1 }}
                 >
                   {isPersonalRecord && (
                     <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="inline-flex items-center gap-2 mb-4 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 rounded-full border border-amber-500/40 pr-badge"
+                      initial={{ scale: 0, rotate: -4 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                      className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-400 text-xs font-semibold"
                     >
-                      <span className="text-lg">🏆</span>
-                      <span className="font-bold text-amber-400">Personal Record!</span>
+                      <span>🏆</span> Personal Record
                     </motion.div>
                   )}
-                  <h2 className="text-3xl font-bold mb-2">
-                    <GlitchText>Race Complete</GlitchText>
-                  </h2>
-                  <p className="text-white/50">{currentSnippet?.title}</p>
+                  <div className="text-[80px] font-bold leading-none tabular-nums text-white">{stats.wpm}</div>
+                  <div className="text-sm text-zinc-500 mt-2">words per minute</div>
+                  <p className="text-zinc-600 text-xs mt-1">{currentSnippet?.title}</p>
+                  <p className="text-zinc-400 text-sm mt-3 font-medium">
+                    {stats.wpm > 110 ? 'Exceptional' : stats.wpm > 90 ? 'Impressive' : stats.wpm > 70 ? 'Above average' : stats.wpm > 50 ? 'Solid speed' : stats.wpm > 30 ? 'Building muscle memory' : 'Just getting started'}
+                  </p>
                 </motion.div>
 
+                {/* Secondary stats row */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className={`${theme.card} backdrop-blur-xl rounded-2xl p-8 border border-white/10 neon-border`}
+                  transition={{ delay: 0.2 }}
+                  className="grid grid-cols-3 gap-3 mb-6"
                 >
-                  <div className="grid grid-cols-4 gap-6">
-                    <StatCard label="Speed" value={`${stats.wpm}`} subtext="words/min" />
-                    <StatCard label="Accuracy" value={`${stats.accuracy}%`} />
-                    <StatCard label="Time" value={`${stats.elapsed}s`} />
-                    <StatCard label="Errors" value={stats.errors} />
+                  <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-4">
+                    <div className="text-2xl font-bold text-violet-400 tabular-nums">{stats.accuracy}%</div>
+                    <div className="text-xs text-zinc-500 mt-1">Accuracy</div>
+                  </div>
+                  <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-4">
+                    <div className="text-2xl font-bold text-blue-400 tabular-nums">{stats.elapsed}s</div>
+                    <div className="text-xs text-zinc-500 mt-1">Time</div>
+                  </div>
+                  <div className="bg-[#18181b] rounded-xl border border-[#3f3f46] p-4">
+                    <div className="text-2xl font-bold text-rose-400 tabular-nums">{stats.errors}</div>
+                    <div className="text-xs text-zinc-500 mt-1">Errors</div>
                   </div>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className={`${theme.card} backdrop-blur-xl rounded-xl p-4 border border-white/10 text-center`}
-                >
+                {/* Feedback + ghost */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mb-6 space-y-1">
                   {stats.wpm >= 80 && stats.accuracy >= 95 ? (
-                    <p className="text-emerald-400 font-medium">Outstanding performance!</p>
+                    <p className="text-emerald-400 text-sm font-medium">Outstanding performance!</p>
                   ) : stats.wpm >= 60 && stats.accuracy >= 90 ? (
-                    <p className="text-blue-400 font-medium">Great job!</p>
+                    <p className="text-blue-400 text-sm font-medium">Great job!</p>
                   ) : stats.wpm >= 40 ? (
-                    <p className="text-amber-400 font-medium">Good effort, keep practicing!</p>
+                    <p className="text-amber-400 text-sm font-medium">Good effort, keep practicing!</p>
                   ) : (
-                    <p className="text-white/50">Practice makes perfect</p>
-                  )}
-                  {bestScore === stats.wpm && (
-                    <motion.p
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.5 }}
-                      className="text-yellow-400 mt-2 font-medium"
-                    >
-                      New Personal Best!
-                    </motion.p>
+                    <p className="text-zinc-500 text-sm">Practice makes perfect</p>
                   )}
                   {ghostTimeDiff && ghostEnabled && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.6 }}
-                      className={`mt-2 font-medium ${ghostTimeDiff.diff < 0 ? 'text-emerald-400' : 'text-purple-400'}`}
-                    >
+                    <p className={`text-sm font-medium ${ghostTimeDiff.diff < 0 ? 'text-emerald-400' : 'text-zinc-400'}`}>
                       {ghostTimeDiff.diff < 0
-                        ? `${Math.abs(ghostTimeDiff.diff).toFixed(1)}s faster than your ghost!`
+                        ? `${Math.abs(ghostTimeDiff.diff).toFixed(1)}s faster than your ghost`
                         : ghostTimeDiff.diff > 0
                           ? `${ghostTimeDiff.diff.toFixed(1)}s behind your ghost`
-                          : 'Tied with your ghost!'}
-                    </motion.p>
+                          : 'Tied with your ghost'}
+                    </p>
                   )}
+                  {streak > 1 && <p className="text-orange-400 text-sm">🔥 {streak} race streak</p>}
                 </motion.div>
 
-                <StaggerContainer className="space-y-3" staggerDelay={0.1}>
+                {/* Actions */}
+                <StaggerContainer className="space-y-2" staggerDelay={0.05}>
                   {hasGhostForCurrentSnippet && ghostEnabled && (
                     <StaggerItem>
-                      <RippleButton onClick={raceGhost} className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 font-semibold glow-hover flex items-center justify-center gap-2">
-                        Race Your Ghost
-                        <span className="text-xs text-white/70 ml-1">Same snippet, beat your time</span>
+                      <RippleButton onClick={raceGhost} className="w-full py-3 rounded-xl bg-[#27272a] hover:bg-zinc-700 border border-[#3f3f46] text-sm font-semibold text-zinc-200 flex items-center justify-center gap-2">
+                        Race Ghost <span className="text-xs text-zinc-500 font-normal">same snippet, beat your time</span>
                       </RippleButton>
                     </StaggerItem>
                   )}
-
                   <StaggerItem>
-                    <div className="flex gap-3">
-                      <RippleButton onClick={startGame} className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${theme.accent} font-semibold glow-hover`}>
-                        New Snippet
+                    <div className="flex gap-2">
+                      <RippleButton onClick={startGame} className="flex-1 py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-zinc-950 font-semibold text-sm">
+                        New Race
                       </RippleButton>
-                      <RippleButton onClick={() => setScreen('menu')} className="flex-1 py-3 rounded-xl border border-white/20 font-semibold hover:bg-white/5 glow-hover">
-                        Settings
+                      <RippleButton onClick={() => setScreen('menu')} className="flex-1 py-3 rounded-xl border border-[#3f3f46] text-sm font-semibold hover:bg-[#27272a] text-zinc-300">
+                        Change Setup
                       </RippleButton>
                     </div>
                   </StaggerItem>
-
                   <StaggerItem>
-                    <p className="text-center text-xs text-white/30">
-                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded">Enter</kbd> new race
-                      <span className="mx-2">•</span>
-                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded">R</kbd> restart
-                      <span className="mx-2">•</span>
-                      <kbd className="px-1.5 py-0.5 bg-white/10 rounded">G</kbd> ghost
+                    <p className="text-center text-xs text-zinc-600 pt-1">
+                      <kbd className="px-1.5 py-0.5 bg-white/5 rounded border border-[#3f3f46]">Enter</kbd> new race ·
+                      <kbd className="px-1.5 py-0.5 bg-white/5 rounded border border-[#3f3f46] ml-1">G</kbd> ghost
                     </p>
                   </StaggerItem>
                 </StaggerContainer>
+              </motion.div>
+            )}
 
-                {streak > 1 && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center text-orange-400 text-sm"
-                  >
-                    {streak} races completed this session
-                  </motion.p>
-                )}
+            {screen === 'zen_interstitial' && (
+              <motion.div
+                key="zen-interstitial"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="min-h-[80vh] flex flex-col items-center justify-center"
+              >
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', damping: 20 }}
+                  className="text-center"
+                >
+                  <div className="text-4xl mb-2">✓</div>
+                  <div className="text-white/50 text-sm">Nice. Next one coming up...</div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {screen === 'zen_summary' && (
+              <motion.div
+                key="zen-summary"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="min-h-[80vh] flex flex-col items-center justify-center"
+              >
+                <div className={"bg-[#18181b] rounded-2xl p-8 border border-[#3f3f46] max-w-md w-full text-center"}>
+                  <div className="text-3xl mb-2">☯</div>
+                  <h2 className="text-2xl font-bold mb-1">Zen Session Complete</h2>
+                  <p className="text-white/40 text-sm mb-6">
+                    {zenSessionStartTime ? Math.round((Date.now() - zenSessionStartTime) / 1000 / 60) : 0} min session
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 rounded-xl bg-white/5">
+                      <div className="text-2xl font-bold text-emerald-400">{zenSnippetsCompleted}</div>
+                      <div className="text-xs text-white/50">Snippets</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5">
+                      <div className="text-2xl font-bold text-blue-400">{streak}</div>
+                      <div className="text-xs text-white/50">Streak</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <RippleButton
+                      onClick={() => { setIsZenMode(true); startZenSnippet(); }}
+                      className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-zinc-950 font-medium"
+                    >
+                      Continue Zen
+                    </RippleButton>
+                    <RippleButton
+                      onClick={() => setScreen('home')}
+                      className="w-full py-3 rounded-xl border border-white/20 font-medium hover:bg-white/5"
+                    >
+                      Back to Home
+                    </RippleButton>
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
