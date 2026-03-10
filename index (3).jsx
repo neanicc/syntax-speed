@@ -729,6 +729,254 @@ nums.stream()
   },
 };
 
+// Debug Mode Snippets — buggyCode + correct code + hints
+const DEBUG_SNIPPETS = {
+  javascript: {
+    beginner: [
+      {
+        title: "Fix the Arrow Function",
+        buggyCode: `const add = (a, b) -> a + b;`,
+        code: `const add = (a, b) => a + b;`,
+        hints: ["Arrow syntax uses => not ->"],
+      },
+      {
+        title: "Fix the Comparison",
+        buggyCode: `if (x = 10) {\n  console.log("ten");\n}`,
+        code: `if (x === 10) {\n  console.log("ten");\n}`,
+        hints: ["Assignment vs comparison operator"],
+      },
+      {
+        title: "Fix the Array Method",
+        buggyCode: `const doubled = nums.maps(n => n * 2);`,
+        code: `const doubled = nums.map(n => n * 2);`,
+        hints: ["Check the method name spelling"],
+      },
+      {
+        title: "Fix the String",
+        buggyCode: `const msg = "Hello, " + name + "!;`,
+        code: `const msg = "Hello, " + name + "!";`,
+        hints: ["Missing closing quote"],
+      },
+      {
+        title: "Fix the Variable",
+        buggyCode: `cosnt greeting = "Hi there";`,
+        code: `const greeting = "Hi there";`,
+        hints: ["Typo in the keyword"],
+      },
+    ],
+    intermediate: [
+      {
+        title: "Fix the Async Function",
+        buggyCode: `const fetchData = async (url) => {\n  const res = wait fetch(url);\n  return res.json();\n};`,
+        code: `const fetchData = async (url) => {\n  const res = await fetch(url);\n  return res.json();\n};`,
+        hints: ["Missing keyword before fetch"],
+      },
+      {
+        title: "Fix the Reduce",
+        buggyCode: `const total = items.reduce(\n  (sum, item) => sum + item.price\n);`,
+        code: `const total = items.reduce(\n  (sum, item) => sum + item.price,\n  0\n);`,
+        hints: ["Missing initial value for reduce"],
+      },
+      {
+        title: "Fix the Destructuring",
+        buggyCode: `const [name, age] = person;`,
+        code: `const { name, age } = person;`,
+        hints: ["Wrong bracket type for object destructuring"],
+      },
+      {
+        title: "Fix the Promise Chain",
+        buggyCode: `fetch(url)\n  .then(res => res.json)\n  .then(data => console.log(data));`,
+        code: `fetch(url)\n  .then(res => res.json())\n  .then(data => console.log(data));`,
+        hints: ["Missing parentheses on method call"],
+      },
+    ],
+    advanced: [
+      {
+        title: "Fix the Closure",
+        buggyCode: `const memoize = (fn) => {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (cache.has(key))\n      return cache.get(key);\n    const result = fn(args);\n    cache.set(key, result);\n    return result;\n  };\n};`,
+        code: `const memoize = (fn) => {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (cache.has(key))\n      return cache.get(key);\n    const result = fn(...args);\n    cache.set(key, result);\n    return result;\n  };\n};`,
+        hints: ["How should the arguments be spread when calling fn?"],
+      },
+      {
+        title: "Fix the Generator",
+        buggyCode: `function* range(start, end) {\n  for (let i = start; i < end; i++) {\n    return i;\n  }\n}`,
+        code: `function* range(start, end) {\n  for (let i = start; i < end; i++) {\n    yield i;\n  }\n}`,
+        hints: ["Generators produce values differently than regular functions"],
+      },
+    ],
+  },
+  python: {
+    beginner: [
+      {
+        title: "Fix the Print",
+        buggyCode: `print("Hello, World!"`,
+        code: `print("Hello, World!")`,
+        hints: ["Missing closing parenthesis"],
+      },
+      {
+        title: "Fix the Indentation",
+        buggyCode: `def greet(name):\nreturn f"Hello, {name}!"`,
+        code: `def greet(name):\n    return f"Hello, {name}!"`,
+        hints: ["Python requires indentation inside functions"],
+      },
+      {
+        title: "Fix the Loop",
+        buggyCode: `for i in range(10)\n    print(i)`,
+        code: `for i in range(10):\n    print(i)`,
+        hints: ["Missing colon after the for statement"],
+      },
+      {
+        title: "Fix the String Format",
+        buggyCode: `name = "Alice"\nprint("Hello, " + name + "!" )`,
+        code: `name = "Alice"\nprint(f"Hello, {name}!")`,
+        hints: ["Use an f-string for cleaner string formatting"],
+      },
+    ],
+    intermediate: [
+      {
+        title: "Fix the List Comprehension",
+        buggyCode: `squares = [x ** 2 for x in range(10]`,
+        code: `squares = [x ** 2 for x in range(10)]`,
+        hints: ["Mismatched brackets"],
+      },
+      {
+        title: "Fix the Class",
+        buggyCode: `class Dog:\n    def __init__(self, name):\n        self.name = name\n    \n    def bark(self):\n        return f"{name} says woof!"`,
+        code: `class Dog:\n    def __init__(self, name):\n        self.name = name\n    \n    def bark(self):\n        return f"{self.name} says woof!"`,
+        hints: ["How do you access instance attributes in Python?"],
+      },
+      {
+        title: "Fix the Default Argument",
+        buggyCode: `def append_item(item, lst=[]):\n    lst.append(item)\n    return lst`,
+        code: `def append_item(item, lst=None):\n    if lst is None:\n        lst = []\n    lst.append(item)\n    return lst`,
+        hints: ["Mutable default arguments are shared across calls"],
+      },
+    ],
+    advanced: [
+      {
+        title: "Fix the Decorator",
+        buggyCode: `def timer(func):\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        result = func(*args, **kwargs)\n        print(f"Took {time.time() - start}s")\n    return wrapper`,
+        code: `def timer(func):\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        result = func(*args, **kwargs)\n        print(f"Took {time.time() - start}s")\n        return result\n    return wrapper`,
+        hints: ["The wrapper function is missing a return value"],
+      },
+    ],
+  },
+  typescript: {
+    beginner: [
+      {
+        title: "Fix the Type",
+        buggyCode: `const name: string = 42;`,
+        code: `const name: string = "42";`,
+        hints: ["Value doesn't match the declared type"],
+      },
+      {
+        title: "Fix the Interface",
+        buggyCode: `interface User {\n  name: string\n  age: number\n}\nconst u: User = { name: "Bob" };`,
+        code: `interface User {\n  name: string;\n  age: number;\n}\nconst u: User = { name: "Bob", age: 30 };`,
+        hints: ["Interface fields need semicolons, and all required fields must be provided"],
+      },
+    ],
+    intermediate: [
+      {
+        title: "Fix the Generic",
+        buggyCode: `function first<T>(arr: T[]): T {\n  return arr[0];\n}`,
+        code: `function first<T>(arr: T[]): T | undefined {\n  return arr[0];\n}`,
+        hints: ["What if the array is empty?"],
+      },
+      {
+        title: "Fix the Type Assertion",
+        buggyCode: `const val = (input as string).toUppercase();`,
+        code: `const val = (input as string).toUpperCase();`,
+        hints: ["Check the method name casing"],
+      },
+    ],
+    advanced: [
+      {
+        title: "Fix the Mapped Type",
+        buggyCode: `type Readonly<T> = {\n  [K in keyof T]: T[K];\n};`,
+        code: `type Readonly<T> = {\n  readonly [K in keyof T]: T[K];\n};`,
+        hints: ["The mapped type should mark all properties as readonly"],
+      },
+    ],
+  },
+  cpp: {
+    beginner: [
+      {
+        title: "Fix the Semicolon",
+        buggyCode: `int x = 5\nstd::cout << x << std::endl;`,
+        code: `int x = 5;\nstd::cout << x << std::endl;`,
+        hints: ["C++ statements need terminators"],
+      },
+      {
+        title: "Fix the Include",
+        buggyCode: `include <iostream>\nint main() {\n  std::cout << "Hi";\n}`,
+        code: `#include <iostream>\nint main() {\n  std::cout << "Hi";\n}`,
+        hints: ["Preprocessor directives start with #"],
+      },
+    ],
+    intermediate: [
+      {
+        title: "Fix the Loop",
+        buggyCode: `for (int i = 0; i <= 5; i++) {\n    std::cout << nums[i] << " ";\n}`,
+        code: `for (int i = 0; i < 5; i++) {\n    std::cout << nums[i] << " ";\n}`,
+        hints: ["Off-by-one error in the loop condition"],
+      },
+      {
+        title: "Fix the Pointer",
+        buggyCode: `int* ptr = nullptr;\nstd::cout << *ptr;`,
+        code: `int val = 42;\nint* ptr = &val;\nstd::cout << *ptr;`,
+        hints: ["Dereferencing a null pointer causes undefined behavior"],
+      },
+    ],
+    advanced: [
+      {
+        title: "Fix the Template",
+        buggyCode: `template<T>\nT max(T a, T b) {\n  return a > b ? a : b;\n}`,
+        code: `template<typename T>\nT max(T a, T b) {\n  return a > b ? a : b;\n}`,
+        hints: ["Template parameter declaration requires typename or class"],
+      },
+    ],
+  },
+  java: {
+    beginner: [
+      {
+        title: "Fix the Main Method",
+        buggyCode: `public class Main {\n    public void main(String[] args) {\n        System.out.println("Hello!");\n    }\n}`,
+        code: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello!");\n    }\n}`,
+        hints: ["The main method needs a modifier"],
+      },
+      {
+        title: "Fix the Variable Type",
+        buggyCode: `int price = 9.99;\nSystem.out.println(price);`,
+        code: `double price = 9.99;\nSystem.out.println(price);`,
+        hints: ["int cannot hold decimal values"],
+      },
+    ],
+    intermediate: [
+      {
+        title: "Fix the String Comparison",
+        buggyCode: `String a = "hello";\nString b = "hello";\nif (a == b) {\n    System.out.println("equal");\n}`,
+        code: `String a = "hello";\nString b = "hello";\nif (a.equals(b)) {\n    System.out.println("equal");\n}`,
+        hints: ["How should you compare Strings in Java?"],
+      },
+      {
+        title: "Fix the Array Init",
+        buggyCode: `int[] nums = new int[5];\nnums[5] = 10;`,
+        code: `int[] nums = new int[5];\nnums[4] = 10;`,
+        hints: ["Arrays are zero-indexed — what's the last valid index?"],
+      },
+    ],
+    advanced: [
+      {
+        title: "Fix the Generics",
+        buggyCode: `List<int> nums = new ArrayList<>();\nnums.add(1);`,
+        code: `List<Integer> nums = new ArrayList<>();\nnums.add(1);`,
+        hints: ["Java generics require wrapper types, not primitives"],
+      },
+    ],
+  },
+};
+
 // Syntax highlighting configuration
 const SYNTAX_RULES = {
   javascript: {
@@ -774,6 +1022,8 @@ const ACHIEVEMENTS = [
   { id: 'all_langs', title: 'Polyglot', desc: 'Race in all 5 languages', icon: '5L', rarity: 'epic', check: (stats) => stats.languagesUsed >= 5 },
   { id: 'dsa_master', title: 'DSA Master', desc: 'Complete 20 DSA races', icon: 'DSA', rarity: 'rare', check: (stats) => stats.dsaRaces >= 20 },
   { id: 'advanced', title: 'Expert', desc: 'Complete 10 advanced races', icon: 'A', rarity: 'epic', check: (stats) => stats.advancedRaces >= 10 },
+  { id: 'debug_10', title: 'Bug Hunter', desc: 'Complete 10 debug races', icon: '🐛', rarity: 'rare', check: (stats) => stats.debugRaces >= 10 },
+  { id: 'debug_25', title: 'Exterminator', desc: 'Complete 25 debug races', icon: '🔧', rarity: 'epic', check: (stats) => stats.debugRaces >= 25 },
 ];
 
 const LANGUAGE_CONFIG = {
@@ -787,6 +1037,7 @@ const LANGUAGE_CONFIG = {
 const CATEGORY_CONFIG = {
   general: { label: 'General', description: 'Common patterns and syntax' },
   dsa: { label: 'DSA', description: 'Data Structures & Algorithms' },
+  debug: { label: 'Debug', description: 'Find and fix the bugs' },
 };
 
 const DIFFICULTY_CONFIG = {
@@ -1372,6 +1623,7 @@ export default function CodeTypeRacer() {
   const [showAbout, setShowAbout] = useState(false);
   const [ghostEnabled, setGhostEnabled] = useState(true);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
   const [zenSnippetsCompleted, setZenSnippetsCompleted] = useState(0);
   const [zenSessionStartTime, setZenSessionStartTime] = useState(null);
 
@@ -1400,6 +1652,7 @@ export default function CodeTypeRacer() {
 
       if (e.key === 'Escape') {
         if (screen === 'finished' || screen === 'countdown') {
+          setIsDebugMode(false);
           setScreen('menu');
         }
       }
@@ -1544,6 +1797,7 @@ export default function CodeTypeRacer() {
     const topWpm = allBests.length > 0 ? Math.max(...allBests) : 0;
     const languagesUsed = new Set(history.map(r => r.language)).size;
     const dsaRaces = history.filter(r => r.category === 'dsa').length;
+    const debugRaces = history.filter(r => r.category === 'debug').length;
     const advancedRaces = history.filter(r => r.difficulty === 'advanced').length;
     const hasPerfect = history.some(r => r.accuracy === 100);
 
@@ -1553,17 +1807,39 @@ export default function CodeTypeRacer() {
       maxStreak: streak,
       languagesUsed,
       dsaRaces,
+      debugRaces,
       advancedRaces,
       hasPerfect: hasPerfect || (extraRace && extraRace.accuracy === 100),
     };
   };
 
   const startGame = () => {
+    if (selectedCategory === 'debug') {
+      startDebugGame();
+      return;
+    }
     const snippet = getNextSnippet(selectedCategory, selectedLanguage, selectedDifficulty);
     if (!snippet) {
       alert('No snippets available for this combination.');
       return;
     }
+    setIsDebugMode(false);
+    startWithSnippet(snippet, false);
+  };
+
+  const startDebugGame = () => {
+    const langSnippets = DEBUG_SNIPPETS[selectedLanguage];
+    if (!langSnippets) {
+      alert('No debug snippets for this language.');
+      return;
+    }
+    const diffSnippets = langSnippets[selectedDifficulty];
+    if (!diffSnippets || diffSnippets.length === 0) {
+      alert('No debug snippets for this difficulty.');
+      return;
+    }
+    const snippet = diffSnippets[Math.floor(Math.random() * diffSnippets.length)];
+    setIsDebugMode(true);
     startWithSnippet(snippet, false);
   };
 
@@ -1671,6 +1947,7 @@ export default function CodeTypeRacer() {
         setIsZenMode(false);
         setScreen('zen_summary');
       } else {
+        setIsDebugMode(false);
         setScreen('menu');
       }
       return;
@@ -2313,6 +2590,7 @@ export default function CodeTypeRacer() {
                         >
                           {config.label}
                           {key === 'dsa' && <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-purple-500/25 text-purple-400 rounded font-bold uppercase">New</span>}
+                          {key === 'debug' && <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-red-500/25 text-red-400 rounded font-bold uppercase">New</span>}
                         </button>
                       ))}
                     </div>
@@ -2449,6 +2727,32 @@ export default function CodeTypeRacer() {
                     )}
                   </div>
                 </div>
+
+                {/* Debug mode — buggy code reference */}
+                {isDebugMode && currentSnippet?.buggyCode && (
+                  <div className="bg-[#18181b] rounded-xl p-4 border border-red-500/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-red-400 text-sm font-semibold">🐛 Buggy Code</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded uppercase tracking-wider font-bold">Find the bug</span>
+                    </div>
+                    <pre className="text-sm font-mono leading-relaxed whitespace-pre-wrap text-red-300/80">{currentSnippet.buggyCode}</pre>
+                    {currentSnippet.hints?.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="text-xs text-zinc-500 mb-1">💡 Hint</div>
+                        {currentSnippet.hints.map((hint, i) => (
+                          <div key={i} className="text-xs text-amber-400/70">{hint}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Debug label above typing area */}
+                {isDebugMode && (
+                  <div className="text-sm text-emerald-400 font-medium flex items-center gap-2 -mb-2">
+                    <span>✓</span> Type the corrected version:
+                  </div>
+                )}
 
                 {/* Code Display with CRT Effect */}
                 <div className={`bg-[#18181b] rounded-xl p-6 border border-[#3f3f46] cursor-text ${errorShake ? 'error-shake error-flash' : ''}`}>
